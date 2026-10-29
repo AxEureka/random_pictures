@@ -21,6 +21,38 @@
       <button id="start-button" type="button">OK</button>
     </section>
 
+    <section id="participant-screen" class="hidden">
+      <h1>参加者情報</h1>
+    
+      <p>以下の項目に回答してください。</p>
+    
+      <form id="participant-form">
+        <div id="participant-age-field">
+          <label for="participant-age">年齢</label>
+          <input
+            id="participant-age"
+            name="age"
+            type="number"
+            min="0"
+            max="120"
+            step="1"
+            placeholder="年齢を入力"
+          >
+        </div>
+    
+        <div id="participant-gender-field">
+          <label for="participant-gender">性別</label>
+          <select id="participant-gender" name="gender">
+            <option value="">選択してください</option>
+          </select>
+        </div>
+    
+        <div class="button-row">
+          <button type="submit">実験を開始</button>
+        </div>
+      </form>
+    </section>
+
     <section id="experiment-screen" class="hidden" aria-live="polite">
       <p id="progress-text"></p>
       <div id="stimulus-area" class="stimulus-area"></div>
