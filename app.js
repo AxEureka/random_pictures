@@ -736,8 +736,24 @@ initApp();
 // Supabase 接続確認
 // ========================================
 
-if (window.supabaseClient) {
-  console.log("Supabase接続設定を読み込みました。");
-} else {
-  console.error("Supabase接続設定を読み込めませんでした。");
+async function testSupabaseConnection() {
+  try {
+    const { data, error } = await window.supabaseClient
+      .from("experiment_projects")
+      .select("id")
+      .limit(1);
+
+    if (error) {
+      console.error("Supabase通信エラー:", error);
+      return;
+    }
+
+    console.log("Supabaseデータベースとの通信に成功しました！");
+    console.log("取得データ:", data);
+
+  } catch (error) {
+    console.error("接続テストに失敗しました:", error);
+  }
 }
+
+testSupabaseConnection();
