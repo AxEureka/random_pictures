@@ -13,6 +13,7 @@ let project;
 let selectedImages = [];
 let imageIndex = 0;
 let responses = [];
+let participantInfo = {};
 let currentAnswers = {};
 let participantStartedAt = null;
 let participantFinishedAt = null;
@@ -22,6 +23,7 @@ function showScreen(screenId) {
   [
     "loading-screen",
     "start-screen",
+    "participant-screen",
     "experiment-screen",
     "finish-screen",
     "error-screen"
@@ -225,6 +227,43 @@ function renderRatingQuestions(imageNumber, onComplete) {
   };
 }
 
+function setupParticipantForm() {
+  const collectAge = Boolean(project.collectAge);
+  const collectGender = Boolean(project.collectGender);
+
+  $("participant-age-field").classList.toggle(
+    "hidden",
+    !collectAge
+  );
+
+  $("participant-gender-field").classList.toggle(
+    "hidden",
+    !collectGender
+  );
+
+  $("participant-age").required = collectAge;
+  $("participant-gender").required = collectGender;
+
+  const genderSelect = $("participant-gender");
+  genderSelect.replaceChildren();
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "選択してください";
+  genderSelect.appendChild(placeholder);
+
+  const genderOptions = Array.isArray(project.genderOptions)
+    ? project.genderOptions
+    : ["男性", "女性", "その他"];
+
+  genderOptions.forEach(gender => {
+    const option = document.createElement("option");
+    option.value = gender;
+    option.textContent = gender;
+    genderSelect.appendChild(option);
+  });
+}
+
 async function showBlankIfNeeded() {
   if (
     project.blankEnabled &&
@@ -349,6 +388,10 @@ async function completeExperiment() {
     projectName: project.name,
     startedAt: participantStartedAt,
     finishedAt: participantFinishedAt,
+
+    age: participantInfo.age ?? null,
+    gender: participantInfo.gender ?? null,
+
     imageOrder: selectedImages.map(image => image.name),
     responses: responses
   };
@@ -416,10 +459,43 @@ async function initExperiment() {
       return;
     }
 
-    $("start-button").addEventListener(
-      "click",
-      startExperiment
-    );
+    setupParticipantForm();
+
+    $("start-button").addEventListener("click", () => {
+      if (project.collectAge || project.collectGender) {
+        showScreen("participant-screen");
+      } else {
+        participantInfo = {};
+        startExperiment();
+      }
+    });
+    
+    $("participant-form").addEventListener("submit", event => {
+      event.preventDefault();
+    
+      const ageInput = $("participant-age").value;
+      const genderInput = $("participant-gender").value;
+    
+      if (
+        project.collectAge &&
+        (
+          ageInput === "" ||
+          !Number.isInteger(Number(ageInput)) ||
+          Number(ageInput) < 0 ||
+          Number(ageInput) > 120
+        )
+      ) {
+        $("participant-age").reportValidity();
+        return;
+      }
+    
+      participantInfo = {
+        age: project.collectAge ? Number(ageInput) : null,
+        gender: project.collectGender ? genderInput : null
+      };
+    
+      startExperiment();
+    });
 
     $("finish-button").addEventListener("click", () => {
       // window.close() は、スクリプトから開かれたタブ以外では
