@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -18,11 +17,11 @@
 
     #status {
       margin: 20px 0;
-      font-size: 16px;
+      font-size: 20px;
     }
 
     #image-area {
-      min-height: 60vh;
+      height: 65vh;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -37,6 +36,12 @@
       object-fit: contain;
     }
 
+    /* ブランク中の注視点 */
+    #fixation {
+      font-size: 32px;
+      font-weight: normal;
+    }
+
     .hidden {
       display: none !important;
     }
@@ -44,12 +49,11 @@
 </head>
 
 <body>
-  <h1>画像提示実験</h1>
-
-  <p id="status">画像を準備しています。</p>
+  <h1 id="status">画像提示実験</h1>
 
   <main id="image-area">
     <img id="stimulus" class="hidden" alt="提示画像">
+    <div id="fixation" class="hidden">＋</div>
   </main>
 
   <script>
@@ -57,23 +61,29 @@
     // 実験設定
     // ===================================
 
-    // 画像候補数：画像のトータル枚数を設定
-    const TOTAL_IMAGES = 2;
+    // 画像候補数：imagesフォルダに保存されている画像のトータル枚数。任意の枚数に調整
+    const TOTAL_IMAGES = 4;
 
-    // 提示枚数(ランダムに表示する枚数を設定)
-    const DISPLAY_COUNT = 1;
+    // 提示枚数：抽出する枚数。任意の枚数に調整
+    const DISPLAY_COUNT = 2;
 
-    // 1枚あたりの提示時間（ミリ秒）:上の行(秒)だけ設定でよい
-    // 5000 = 5秒
+    // 1枚あたりの画像提示時間（秒）：任意の秒数に調整
     const DISPLAY_SECONDS = 5;
-    const DISPLAY_MS = DISPLAY_SECONDS * 1000;
 
-    // 画像ファイルの場所
+    // ブランク時間（秒）：任意の秒数に調整
+    const BLANK_SECONDS = 1;
+
+    // 秒をミリ秒に変換
+    const DISPLAY_MS = DISPLAY_SECONDS * 1000;
+    const BLANK_MS = BLANK_SECONDS * 1000;
+
+    // 画像ファイルの場所。名前は、A連番.jpgで保存
+    // 例：images/A001.jpg
     function getImageURL(number) {
       return `images/A${String(number).padStart(3, "0")}.jpg`;
     }
 
-    // 同じタブの再読み込みで選択を維持する
+    // 同じタブ・ウィンドウの再読み込みで選択を維持
     const STORAGE_KEY = "image_experiment_selection_v1";
 
     // ===================================
@@ -149,53 +159,120 @@
     }
 
     // ===================================
-    // 順番に提示
+    // 時間待ち
+    // ===================================
+
+    function wait(ms) {
+      return new Promise(resolve => {
+        setTimeout(resolve, ms);
+      });
+    }
+
+    // ===================================
+    // ブランク画面
+    // 白い画面の中央に十字を表示
+    // ===================================
+
+    async function showBlank() {
+      const stimulus = document.getElementById("stimulus");
+      const fixation = document.getElementById("fixation");
+
+      stimulus.classList.add("hidden");
+      stimulus.removeAttribute("src");
+
+      fixation.classList.remove("hidden");
+
+      await wait(BLANK_MS);
+
+      fixation.classList.add("hidden");
+    }
+
+    // ===================================
+    // 画像提示実験
     // ===================================
 
     async function startExperiment() {
       const status = document.getElementById("status");
       const stimulus = document.getElementById("stimulus");
+      const fixation = document.getElementById("fixation");
 
-      if (TOTAL_IMAGES < DISPLAY_COUNT) {
-        status.textContent = "画像候補数が不足しています。";
+      // 設定の確認
+      if (
+        !Number.isInteger(TOTAL_IMAGES) ||
+        !Number.isInteger(DISPLAY_COUNT) ||
+        TOTAL_IMAGES < 1 ||
+        DISPLAY_COUNT < 1 ||
+        TOTAL_IMAGES < DISPLAY_COUNT ||
+        DISPLAY_SECONDS <= 0 ||
+        BLANK_SECONDS < 0
+      ) {
+        alert("実験設定を確認してください。");
         return;
       }
+
+      // 開始確認
+      alert("画像を提示します。");
+
+      status.textContent = "画像を準備しています。";
 
       const selected = getSelection();
       const urls = selected.map(getImageURL);
 
-      // 3枚すべてを事前に読み込む
-      status.textContent = "画像を準備しています。";
-
+      // 画像をすべて事前に読み込む
       try {
         await Promise.all(urls.map(preloadImage));
       } catch (error) {
         status.textContent =
           "画像を読み込めませんでした。画像ファイルを確認してください。";
+        alert(
+          "画像を読み込めませんでした。\n" +
+          "画像ファイル名と保存場所を確認してください。"
+        );
         return;
       }
 
-      // 画像1 → 画像2 → 画像3
+      // =================================
+      // ブランク → 画像 → ブランク → 画像
+      // =================================
+
       for (let i = 0; i < urls.length; i++) {
+
+        // 各画像の直前にブランクを挿入
+        await showBlank();
+
+        // 画像を提示
         status.textContent =
           `画像提示 ${i + 1} / ${DISPLAY_COUNT}`;
 
+        fixation.classList.add("hidden");
         stimulus.src = urls[i];
         stimulus.classList.remove("hidden");
 
-        // 表示開始から指定時間待つ
-        await new Promise(resolve => {
-          setTimeout(resolve, DISPLAY_MS);
-        });
+        // 指定秒数だけ表示
+        await wait(DISPLAY_MS);
 
+        // 次の画像へ進む前に非表示
         stimulus.classList.add("hidden");
+        stimulus.removeAttribute("src");
       }
 
-      stimulus.removeAttribute("src");
-      status.textContent = "画像提示は終了しました。";
+      // =================================
+      // 終了
+      // =================================
+
+      fixation.classList.add("hidden");
+      stimulus.classList.add("hidden");
+
+      status.textContent = "お疲れ様でした。";
+
+      // OKを押したらウィンドウを閉じる
+      alert("お疲れ様でした。");
+
+      window.close();
     }
 
     startExperiment();
   </script>
 </body>
 </html>
+```
