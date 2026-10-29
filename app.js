@@ -14,6 +14,7 @@ let projects = [];
 let editingProjectId = null;
 let currentImages = [];
 let previewURLs = [];
+let currentScaleLabels = [];
 
 const $ = (id) => document.getElementById(id);
 
@@ -184,6 +185,7 @@ function resetEditor() {
 
   currentImages = [];
   editingProjectId = null;
+  currentScaleLabels = [];
 
   $("editor-title").textContent = "新規プロジェクト";
   $("save-project-button").textContent = "プロジェクトを保存";
@@ -216,6 +218,9 @@ function openEditor(projectId = null) {
     $("question-count").value = project.questions.length || 1;
     $("rating-timing").value = project.ratingTiming;
     $("likert-count").value = project.scaleType;
+    currentScaleLabels = Array.isArray(project.scaleLabels)
+  ? project.scaleLabels.slice()
+  : [];
     $("custom-scale-options").value =
       (project.customScaleOptions || []).join("\n");
     $("collect-age").checked = project.collectAge;
@@ -285,10 +290,16 @@ $("image-files").addEventListener("change", event => {
     return;
   }
 
-  currentImages = files.map(file => ({
+    // 今ある画像を残し、新しく選んだ画像を追加する
+  const newImages = files.map(file => ({
     name: file.name,
     blob: file
   }));
+
+  currentImages = currentImages.concat(newImages);
+
+  // 次回、同じファイルを選び直せるようにする
+  event.target.value = "";
 
   clearError();
   renderImagePreviews();
@@ -332,7 +343,53 @@ function renderQuestionFields(existingQuestions = []) {
     area.appendChild(wrapper);
   }
 }
+// ========================================
+// 尺度ラベルの入力欄を生成
+// ========================================
 
+function renderScaleLabelFields() {
+  const area = $("scale-label-fields");
+  area.replaceChildren();
+
+  const scaleType = $("likert-count").value;
+  let count;
+
+  if (scaleType === "custom") {
+    // 独自尺度は、入力された選択肢の数を使う
+    count = $("custom-scale-options").value
+      .split("\n")
+      .map(option => option.trim())
+      .filter(Boolean).length;
+  } else {
+    // 通常の尺度は、選択された件数を使う
+    count = Number(scaleType);
+  }
+
+  for (let i = 0; i < count; i++) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "scale-label-field";
+
+    const label = document.createElement("label");
+    label.htmlFor = `scale-label-${i}`;
+    label.textContent = `選択肢 ${i + 1} のラベル`;
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.id = `scale-label-${i}`;
+    input.className = "scale-label-input";
+    input.placeholder = `選択肢 ${i + 1} のラベル`;
+    input.value = currentScaleLabels[i] ?? "";
+
+    input.addEventListener("input", () => {
+      currentScaleLabels = Array.from(
+        area.querySelectorAll("input")
+      ).map(field => field.value);
+    });
+
+    wrapper.append(label, input);
+    area.appendChild(wrapper);
+  }
+}
 
 // ========================================
 // 条件に応じた設定欄の表示
@@ -347,15 +404,28 @@ function updateConditionalFields() {
   $("likert-count").disabled = !ratingEnabled;
 
   $("question-fields").classList.toggle("hidden", !ratingEnabled);
+
   $("custom-scale-area").classList.toggle(
     "hidden",
     !ratingEnabled || !customScale
   );
 
+  $("scale-labels-area").classList.toggle(
+    "hidden",
+    !ratingEnabled
+  );
+
   $("blank-seconds").disabled = !$("blank-enabled").checked;
 
   if (ratingEnabled) {
+    renderScaleLabelFields();
+  } else {
+    $("scale-label-fields").replaceChildren();
+  }
+
+  if (ratingEnabled) {
     const count = Number($("question-count").value);
+
     if (Number.isInteger(count) && count >= 1 && count <= 50) {
       const current = Array.from(
         $("question-fields").querySelectorAll("input")
@@ -370,7 +440,10 @@ function updateConditionalFields() {
 
 $("rating-enabled").addEventListener("change", updateConditionalFields);
 $("blank-enabled").addEventListener("change", updateConditionalFields);
-$("likert-count").addEventListener("change", updateConditionalFields);
+
+$("likert-count").addEventListener("change", () => {
+  updateConditionalFields();
+});
 
 $("question-count").addEventListener("input", () => {
   const current = Array.from(
@@ -380,7 +453,15 @@ $("question-count").addEventListener("input", () => {
   renderQuestionFields(current);
 });
 
-
+// 独自尺度の選択肢が変更されたとき、ラベル欄も更新する
+$("custom-scale-options").addEventListener("input", () => {
+  if (
+    $("rating-enabled").checked &&
+    $("likert-count").value === "custom"
+  ) {
+    renderScaleLabelFields();
+  }
+});
 // ========================================
 // 設定値の取得・検証
 // ========================================
@@ -410,6 +491,10 @@ function readProjectSettings() {
         .filter(Boolean)
     : [];
 
+  const scaleLabels = Array.from(
+    $("scale-label-fields").querySelectorAll("input")
+  ).map(input => input.value.trim());
+  
   if (!name) throw new Error("プロジェクト名を入力してください。");
 
   if (currentImages.length < 1) {
@@ -467,6 +552,7 @@ function readProjectSettings() {
     ratingEnabled,
     ratingTiming,
     scaleType,
+    scaleLabels,
     questions,
     customScaleOptions,
     collectAge: $("collect-age").checked,
