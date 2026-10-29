@@ -213,6 +213,10 @@ function openEditor(projectId = null) {
     $("display-count").value = project.displayCount;
     $("display-seconds").value = project.displaySeconds;
     $("blank-enabled").checked = project.blankEnabled;
+    $("randomize-images").checked =
+      project.randomizeImages ?? true;    
+    $("allow-duplicates").checked =
+      project.allowDuplicates ?? false;
     $("blank-seconds").value = project.blankSeconds;
     $("rating-enabled").checked = project.ratingEnabled;
     $("question-count").value = project.questions.length || 1;
@@ -506,10 +510,15 @@ function readProjectSettings() {
   if (
     !Number.isInteger(displayCount) ||
     displayCount < 1 ||
-    displayCount > currentImages.length
+    (
+      !$("allow-duplicates").checked &&
+      displayCount > currentImages.length
+    )
   ) {
     throw new Error(
-      "提示枚数は1以上、画像候補数以下にしてください。"
+      $("allow-duplicates").checked
+        ? "提示枚数は1以上の整数にしてください。"
+        : "提示枚数は1以上、画像候補数以下にしてください。"
     );
   }
 
@@ -551,6 +560,8 @@ function readProjectSettings() {
     displaySeconds,
     blankEnabled,
     blankSeconds: blankEnabled ? blankSeconds : 0,
+    randomizeImages: $("randomize-images").checked,
+    allowDuplicates: $("allow-duplicates").checked,
     ratingEnabled,
     ratingTiming,
     scaleType,
