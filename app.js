@@ -15,8 +15,76 @@ let editingProjectId = null;
 let currentImages = [];
 let previewURLs = [];
 let currentScaleLabels = [];
+let currentUser = null;
 
 const $ = (id) => document.getElementById(id);
+
+// ========================================
+// Supabase 認証
+// ========================================
+
+// ログイン処理
+$("login-form").addEventListener("submit", async event => {
+  event.preventDefault();
+
+  $("login-error").textContent = "";
+
+  const email = $("login-email").value.trim();
+  const password = $("login-password").value;
+
+  $("login-button").disabled = true;
+  $("login-button").textContent = "ログイン中...";
+
+  try {
+    const { data, error } =
+      await window.supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
+
+    if (error) throw error;
+
+    currentUser = data.user;
+
+    await refreshProjects();
+
+    $("logged-in-email").textContent = currentUser.email;
+    $("auth-status").classList.remove("hidden");
+
+    showScreen("home-screen");
+
+  } catch (error) {
+    $("login-error").textContent =
+      "ログインできませんでした。メールアドレスとパスワードを確認してください。";
+
+    console.error("ログインエラー:", error);
+
+  } finally {
+    $("login-button").disabled = false;
+    $("login-button").textContent = "ログイン";
+  }
+});
+
+
+// ログアウト処理
+$("logout-button").addEventListener("click", async () => {
+  const { error } = await window.supabaseClient.auth.signOut();
+
+  if (error) {
+    alert("ログアウトできませんでした。");
+    console.error(error);
+    return;
+  }
+
+  currentUser = null;
+  projects = [];
+
+  $("auth-status").classList.add("hidden");
+  $("login-password").value = "";
+  $("login-error").textContent = "";
+
+  showScreen("login-screen");
+});
 
 function openDatabase() {
   return new Promise((resolve, reject) => {
@@ -78,13 +146,17 @@ function deleteProject(id) {
 // ========================================
 
 function showScreen(screenId) {
-  ["home-screen", "editor-screen", "detail-screen"].forEach(id => {
+  [
+    "login-screen",
+    "home-screen",
+    "editor-screen",
+    "detail-screen"
+  ].forEach(id => {
     $(id).classList.toggle("hidden", id !== screenId);
   });
 
   window.scrollTo({ top: 0, behavior: "auto" });
 }
-
 function showError(message) {
   $("form-error").textContent = message;
 }
@@ -714,24 +786,46 @@ $("back-to-home-button").addEventListener("click", () => {
 
 async function initApp() {
   try {
+    // IndexedDBを初期化
     if (!("indexedDB" in window)) {
       throw new Error("このブラウザではIndexedDBを利用できません。");
     }
 
     db = await openDatabase();
+
+    // Supabaseのログイン状態を確認
+    const { data, error } =
+      await window.supabaseClient.auth.getSession();
+
+    if (error) throw error;
+
+    currentUser = data.session?.user || null;
+
+    // ログインしていない場合
+    if (!currentUser) {
+      $("auth-status").classList.add("hidden");
+      showScreen("login-screen");
+      return;
+    }
+
+    // ログイン済みの場合
+    $("logged-in-email").textContent = currentUser.email;
+    $("auth-status").classList.remove("hidden");
+
     await refreshProjects();
     updateConditionalFields();
+
     showScreen("home-screen");
+
   } catch (error) {
-    showScreen("home-screen");
-    $("empty-project-message").textContent =
-      "保存領域を初期化できませんでした。ページをHTTPSまたはlocalhostで開いてください。";
-    console.error(error);
+    console.error("起動エラー:", error);
+    $("login-error").textContent =
+      "アプリを起動できませんでした。ページを再読み込みしてください。";
+    showScreen("login-screen");
   }
 }
 
 initApp();
-
 // ========================================
 // Supabase 接続確認
 // ========================================
