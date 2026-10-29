@@ -353,18 +353,31 @@ async function startExperiment() {
   responses = [];
   currentAnswers = {};
 
-  selectedImages = shuffle(project.images).slice(
-    0,
-    Number(project.displayCount)
-  );
+  const displayCount = Number(project.displayCount);
+  const images = project.images;
 
-  if (
-    selectedImages.length !== Number(project.displayCount)
-  ) {
+  // 画像の提示順と重複の設定に応じて画像を選ぶ
+  if (project.randomizeImages ?? true) {
+    if (project.allowDuplicates ?? false) {
+      // ランダム提示 ＋ 重複あり
+      // 同じ画像が複数回選ばれる可能性がある
+      selectedImages = Array.from(
+        { length: displayCount },
+        () => images[Math.floor(Math.random() * images.length)]
+      );
+    } else {
+      // ランダム提示 ＋ 重複なし
+      selectedImages = shuffle(images).slice(0, displayCount);
+    }
+  } else {
+    // ランダム提示なし：登録順に提示
+    selectedImages = images.slice(0, displayCount);
+  }
+
+  if (selectedImages.length !== displayCount) {
     showError(
       "提示する画像が不足しています。管理画面で設定を確認してください。"
     );
-
     return;
   }
 
@@ -449,13 +462,18 @@ async function initExperiment() {
     }
 
     if (
+      !Number.isInteger(Number(project.displayCount)) ||
       Number(project.displayCount) < 1 ||
+      (
+        !(project.randomizeImages ?? true) ||
+        !(project.allowDuplicates ?? false)
+      ) &&
       Number(project.displayCount) > project.images.length
     ) {
       showError(
         "提示枚数の設定が不正です。管理画面で確認してください。"
       );
-
+    
       return;
     }
 
