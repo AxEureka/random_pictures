@@ -4,393 +4,313 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>画像提示実験</title>
-
-  <style>
-    body {
-      margin: 0;
-      font-family: sans-serif;
-      background: #ffffff;
-      color: #222222;
-    }
-
-    /* 画面全体 */
-    #screen {
-      position: relative;
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
-      background: #ffffff;
-    }
-
-    /* 開始・終了メッセージ */
-    #message {
-      position: absolute;
-      inset: 0;
-      z-index: 2;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      gap: 24px;
-      background: #ffffff;
-    }
-
-    #message-text {
-      margin: 0;
-      padding: 0 24px;
-      font-size: 24px;
-      text-align: center;
-    }
-
-    #message-button {
-      min-width: 120px;
-      padding: 12px 32px;
-      font-size: 18px;
-      cursor: pointer;
-    }
-
-    #message-button:disabled {
-      cursor: wait;
-      opacity: 0.6;
-    }
-
-    /* 提示画像 */
-    #stimulus {
-      position: absolute;
-      inset: 0;
-      margin: auto;
-      max-width: 90vw;
-      max-height: 90vh;
-      width: auto;
-      height: auto;
-      object-fit: contain;
-    }
-
-    /* ブランク中の注視点 */
-    #fixation {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 32px;
-      font-weight: normal;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-  </style>
+  <title>画像提示実験アプリ</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
 </head>
 
 <body>
-  <main id="screen">
+  <header class="app-header">
+    <h1>画像提示実験アプリ</h1>
+    <p>実験プロジェクトの作成・管理</p>
+  </header>
 
-    <!-- 開始・終了メッセージ -->
-    <div id="message">
-      <p id="message-text">画像を提示します。</p>
-      <button id="message-button">OK</button>
-    </div>
+  <main class="container">
 
-    <!-- ブランク中の注視点 -->
-    <div id="fixation" class="hidden">＋</div>
+    <!-- ==============================
+         ホーム画面
+    =============================== -->
+    <section id="home-screen">
+      <div class="section-heading">
+        <h2>実験プロジェクト</h2>
+        <button id="new-project-button" type="button">
+          ＋ 新規作成
+        </button>
+      </div>
 
-    <!-- 提示画像 -->
-    <img id="stimulus" class="hidden" alt="提示画像">
+      <p>
+        実験プロジェクトを作成するか、
+        既存のプロジェクトを選択してください。
+      </p>
+
+      <div id="project-list">
+        <p id="empty-project-message">
+          まだプロジェクトがありません。
+          「新規作成」から作成してください。
+        </p>
+      </div>
+    </section>
+
+
+    <!-- ==============================
+         プロジェクト作成・編集画面
+    =============================== -->
+    <section id="editor-screen" class="hidden">
+      <h2 id="editor-title">新規プロジェクト</h2>
+
+      <form id="project-form">
+
+        <fieldset>
+          <legend>基本設定</legend>
+
+          <label for="project-name">
+            プロジェクト名
+          </label>
+          <input
+            id="project-name"
+            name="projectName"
+            type="text"
+            placeholder="例：顔画像の印象評定"
+            required
+          >
+
+          <label for="image-files">
+            提示する画像ファイル
+          </label>
+          <input
+            id="image-files"
+            name="images"
+            type="file"
+            accept="image/*"
+            multiple
+          >
+
+          <p class="help-text">
+            複数の画像を選択できます。
+            対応する画像を選び、提示枚数を設定してください。
+          </p>
+
+          <div id="image-preview-list"></div>
+          <p id="image-count">選択画像：0枚</p>
+
+          <label for="display-count">
+            画像の提示枚数
+          </label>
+          <input
+            id="display-count"
+            name="displayCount"
+            type="number"
+            min="1"
+            step="1"
+            value="2"
+            required
+          >
+
+          <label for="display-seconds">
+            1枚あたりの提示時間（秒）
+          </label>
+          <input
+            id="display-seconds"
+            name="displaySeconds"
+            type="number"
+            min="0.1"
+            step="0.1"
+            value="5"
+            required
+          >
+        </fieldset>
+
+
+        <fieldset>
+          <legend>ブランク設定</legend>
+
+          <label class="checkbox-label">
+            <input
+              id="blank-enabled"
+              name="blankEnabled"
+              type="checkbox"
+              checked
+            >
+            画像の前後にブランクを入れる
+          </label>
+
+          <label for="blank-seconds">
+            ブランク時間（秒）
+          </label>
+          <input
+            id="blank-seconds"
+            name="blankSeconds"
+            type="number"
+            min="0"
+            step="0.1"
+            value="1"
+          >
+
+          <p class="help-text">
+            ブランク中は白い画面に注視点「＋」を表示します。
+          </p>
+        </fieldset>
+
+
+        <fieldset>
+          <legend>評定質問の設定</legend>
+
+          <label class="checkbox-label">
+            <input
+              id="rating-enabled"
+              name="ratingEnabled"
+              type="checkbox"
+              checked
+            >
+            評定質問を実施する
+          </label>
+
+          <label for="question-count">
+            質問項目数
+          </label>
+          <input
+            id="question-count"
+            name="questionCount"
+            type="number"
+            min="1"
+            max="50"
+            step="1"
+            value="2"
+          >
+
+          <label for="rating-timing">
+            質問を表示するタイミング
+          </label>
+          <select id="rating-timing" name="ratingTiming">
+            <option value="each">
+              画像ごとに評定する
+            </option>
+            <option value="end">
+              すべての画像を提示した後に評定する
+            </option>
+          </select>
+
+          <label for="likert-count">
+            回答尺度
+          </label>
+          <select id="likert-count" name="likertCount">
+            <option value="4">4件法</option>
+            <option value="5" selected>5件法</option>
+            <option value="7">7件法</option>
+            <option value="custom">独自の選択肢</option>
+          </select>
+
+          <div id="custom-scale-area" class="hidden">
+            <label for="custom-scale-options">
+              選択肢（1行に1つ）
+            </label>
+            <textarea
+              id="custom-scale-options"
+              name="customScaleOptions"
+              rows="5"
+              placeholder="まったくそう思わない&#10;あまりそう思わない&#10;どちらともいえない&#10;ややそう思う&#10;非常にそう思う"
+            ></textarea>
+          </div>
+
+          <div id="question-fields"></div>
+        </fieldset>
+
+
+        <fieldset>
+          <legend>参加者情報</legend>
+
+          <p class="help-text">
+            実験開始前に年齢と性別を入力する画面を表示します。
+          </p>
+
+          <label class="checkbox-label">
+            <input
+              id="collect-age"
+              name="collectAge"
+              type="checkbox"
+              checked
+            >
+            年齢を取得する
+          </label>
+
+          <label class="checkbox-label">
+            <input
+              id="collect-gender"
+              name="collectGender"
+              type="checkbox"
+              checked
+            >
+            性別を取得する
+          </label>
+
+          <label for="gender-options">
+            性別の選択肢
+          </label>
+          <input
+            id="gender-options"
+            type="text"
+            value="男性,女性,その他"
+            readonly
+          >
+        </fieldset>
+
+
+        <div id="form-error" class="error-message" role="alert"></div>
+
+        <div class="button-row">
+          <button id="cancel-edit-button" type="button">
+            キャンセル
+          </button>
+
+          <button id="save-project-button" type="submit">
+            プロジェクトを保存
+          </button>
+        </div>
+
+      </form>
+    </section>
+
+
+    <!-- ==============================
+         プロジェクト詳細画面
+    =============================== -->
+    <section id="detail-screen" class="hidden">
+      <button id="back-to-home-button" type="button">
+        ← プロジェクト一覧へ戻る
+      </button>
+
+      <h2 id="detail-project-name">プロジェクト名</h2>
+
+      <div class="detail-card">
+        <h3>実験設定</h3>
+        <div id="project-summary"></div>
+      </div>
+
+      <div class="detail-card">
+        <h3>収集データ</h3>
+        <p>
+          回答件数：
+          <strong id="response-count">0</strong> 件
+        </p>
+        <p id="data-status">
+          データ保存機能は準備中です。
+        </p>
+        <button
+          id="download-csv-button"
+          type="button"
+          disabled
+        >
+          CSVをダウンロード
+        </button>
+      </div>
+
+      <div class="button-row">
+        <button id="edit-project-button" type="button">
+          設定を編集
+        </button>
+
+        <button id="copy-experiment-url-button" type="button">
+          実験用URLを取得
+        </button>
+      </div>
+
+      <p id="project-action-message" role="status"></p>
+    </section>
 
   </main>
 
-  <script>
-    // ===================================
-    // 実験設定
-    // ===================================
-
-    // 画像候補数：imagesフォルダ内の画像の総数
-    const TOTAL_IMAGES = 4;
-
-    // 提示枚数：ランダムに抽出する枚数
-    const DISPLAY_COUNT = 2;
-
-    // 1枚あたりの画像提示時間（秒）
-    const DISPLAY_SECONDS = 5;
-
-    // ブランク時間（秒）
-    const BLANK_SECONDS = 1;
-
-    // 秒をミリ秒に変換
-    const DISPLAY_MS = DISPLAY_SECONDS * 1000;
-    const BLANK_MS = BLANK_SECONDS * 1000;
-
-    // 画像ファイルの場所
-    // 例：images/A001.jpg
-    function getImageURL(number) {
-      return `images/A${String(number).padStart(3, "0")}.jpg`;
-    }
-
-    // 同じタブ・ウィンドウでの再読み込み時に
-    // 選択した画像を維持するためのキー
-    const STORAGE_KEY = "image_experiment_selection_v1";
-
-
-    // ===================================
-    // 画面要素
-    // ===================================
-
-    const message = document.getElementById("message");
-    const messageText = document.getElementById("message-text");
-    const messageButton = document.getElementById("message-button");
-    const stimulus = document.getElementById("stimulus");
-    const fixation = document.getElementById("fixation");
-
-
-    // ===================================
-    // ランダム抽出
-    // ===================================
-
-    function shuffle(array) {
-      const result = [...array];
-
-      for (let i = result.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [result[i], result[j]] = [result[j], result[i]];
-      }
-
-      return result;
-    }
-
-    function getSelection() {
-      const candidates = Array.from(
-        { length: TOTAL_IMAGES },
-        (_, i) => i + 1
-      );
-
-      // 保存済みの選択があれば再利用
-      try {
-        const saved = sessionStorage.getItem(STORAGE_KEY);
-
-        if (saved) {
-          const parsed = JSON.parse(saved);
-
-          if (
-            Array.isArray(parsed) &&
-            parsed.length === DISPLAY_COUNT &&
-            new Set(parsed).size === DISPLAY_COUNT &&
-            parsed.every(
-              n => Number.isInteger(n) &&
-                   n >= 1 &&
-                   n <= TOTAL_IMAGES
-            )
-          ) {
-            return parsed;
-          }
-        }
-      } catch (error) {
-        // 保存情報が使えない場合は新しく抽出
-      }
-
-      // 重複なしでランダム抽出
-      const selected = shuffle(candidates).slice(0, DISPLAY_COUNT);
-
-      try {
-        sessionStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify(selected)
-        );
-      } catch (error) {
-        // 保存できなくても実験は続行
-      }
-
-      return selected;
-    }
-
-
-    // ===================================
-    // 画像の事前読み込み
-    // ===================================
-
-    function preloadImage(url) {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-
-        img.onload = () => resolve(url);
-        img.onerror = () => reject(new Error(url));
-
-        img.src = url;
-      });
-    }
-
-
-    // ===================================
-    // 時間待ち
-    // ===================================
-
-    function wait(ms) {
-      return new Promise(resolve => {
-        setTimeout(resolve, ms);
-      });
-    }
-
-
-    // ===================================
-    // 画面表示の切り替え
-    // ===================================
-
-    function hideImageAndFixation() {
-      stimulus.classList.add("hidden");
-      stimulus.removeAttribute("src");
-      fixation.classList.add("hidden");
-    }
-
-    function showMessage(text, buttonText = "OK") {
-      hideImageAndFixation();
-
-      messageText.textContent = text;
-      messageButton.textContent = buttonText;
-      message.classList.remove("hidden");
-    }
-
-    function hideMessage() {
-      message.classList.add("hidden");
-    }
-
-
-    // ===================================
-    // ブランク画面
-    // 白背景の中央に十字を表示
-    // ===================================
-
-    async function showBlank() {
-      stimulus.classList.add("hidden");
-      stimulus.removeAttribute("src");
-      message.classList.add("hidden");
-
-      fixation.classList.remove("hidden");
-
-      await wait(BLANK_MS);
-
-      fixation.classList.add("hidden");
-    }
-
-
-    // ===================================
-    // 実験設定の確認
-    // ===================================
-
-    function validateSettings() {
-      return (
-        Number.isInteger(TOTAL_IMAGES) &&
-        Number.isInteger(DISPLAY_COUNT) &&
-        TOTAL_IMAGES >= 1 &&
-        DISPLAY_COUNT >= 1 &&
-        TOTAL_IMAGES >= DISPLAY_COUNT &&
-        Number.isFinite(DISPLAY_SECONDS) &&
-        DISPLAY_SECONDS > 0 &&
-        Number.isFinite(BLANK_SECONDS) &&
-        BLANK_SECONDS >= 0
-      );
-    }
-
-
-    // ===================================
-    // 画像提示実験
-    // ===================================
-
-    async function startExperiment() {
-
-      if (!validateSettings()) {
-        showMessage("実験設定を確認してください。");
-        phase = "error";
-        return;
-      }
-
-      // 画像をランダムに抽出
-      const selected = getSelection();
-      const urls = selected.map(getImageURL);
-
-      // 画像をすべて事前に読み込む
-      showMessage("画像を準備しています。");
-      messageButton.disabled = true;
-
-      try {
-        await Promise.all(urls.map(preloadImage));
-      } catch (error) {
-        showMessage(
-          "画像を読み込めませんでした。画像ファイルを確認してください。"
-        );
-        phase = "error";
-        messageButton.disabled = false;
-        return;
-      }
-
-      // =================================
-      // ブランク → 画像を順番に提示
-      // =================================
-
-      for (let i = 0; i < urls.length; i++) {
-
-        // 各画像の直前にブランク
-        await showBlank();
-
-        // 画像を提示（枚数表示なし）
-        stimulus.src = urls[i];
-        stimulus.classList.remove("hidden");
-
-        // 指定秒数だけ表示
-        await wait(DISPLAY_MS);
-
-        // 画像を消す
-        stimulus.classList.add("hidden");
-        stimulus.removeAttribute("src");
-      }
-
-      // =================================
-      // 最後の画像の後のブランク
-      // =================================
-
-      await showBlank();
-
-      // =================================
-      // 終了画面
-      // =================================
-
-      hideImageAndFixation();
-
-      phase = "end";
-      showMessage("お疲れ様でした。");
-      messageButton.disabled = false;
-    }
-
-
-    // ===================================
-    // ボタン操作
-    // ===================================
-
-    let phase = "start";
-
-    messageButton.addEventListener("click", async () => {
-
-      // 開始画面
-      if (phase === "start") {
-        phase = "running";
-        await startExperiment();
-        return;
-      }
-
-      // 画像読み込みエラー
-      if (phase === "error") {
-        // 閉じる操作が可能なら閉じる
-        window.close();
-        return;
-      }
-
-      // 実験終了画面
-      if (phase === "end") {
-        window.close();
-        return;
-      }
-    });
-
-  </script>
+  <footer>
+    <p>画像提示実験アプリ</p>
+  </footer>
 </body>
 </html>
