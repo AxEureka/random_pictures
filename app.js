@@ -640,7 +640,7 @@ function openProjectDetail(projectId) {
   $("edit-project-button").onclick = () => openEditor(project.id);
 
   $("copy-experiment-url-button").onclick = async () => {
-    const url = new URL(window.location.href);
+    const url = new URL("experiment.html", window.location.href);
     url.searchParams.set("project", project.id);
 
     try {
