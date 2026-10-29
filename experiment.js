@@ -199,6 +199,7 @@ function renderRatingQuestions(imageNumber, onComplete) {
       
       label.append(input, number, text);
       optionsContainer.appendChild(label);
+    });
 
     fieldset.appendChild(optionsContainer);
     form.appendChild(fieldset);
