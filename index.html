@@ -1,0 +1,201 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>画像提示実験</title>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: sans-serif;
+      text-align: center;
+      background: #ffffff;
+      color: #222222;
+    }
+
+    #status {
+      margin: 20px 0;
+      font-size: 16px;
+    }
+
+    #image-area {
+      min-height: 60vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #stimulus {
+      display: block;
+      max-width: 90vw;
+      max-height: 65vh;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>画像提示実験</h1>
+
+  <p id="status">画像を準備しています。</p>
+
+  <main id="image-area">
+    <img id="stimulus" class="hidden" alt="提示画像">
+  </main>
+
+  <script>
+    // ===================================
+    // 実験設定
+    // ===================================
+
+    // 画像候補数：画像のトータル枚数を設定
+    const TOTAL_IMAGES = 2;
+
+    // 提示枚数(ランダムに表示する枚数を設定)
+    const DISPLAY_COUNT = 1;
+
+    // 1枚あたりの提示時間（ミリ秒）:上の行(秒)だけ設定でよい
+    // 5000 = 5秒
+    const DISPLAY_SECONDS = 5;
+    const DISPLAY_MS = DISPLAY_SECONDS * 1000;
+
+    // 画像ファイルの場所
+    function getImageURL(number) {
+      return `images/A${String(number).padStart(3, "0")}.jpg`;
+    }
+
+    // 同じタブの再読み込みで選択を維持する
+    const STORAGE_KEY = "image_experiment_selection_v1";
+
+    // ===================================
+    // ランダム抽出
+    // ===================================
+
+    function shuffle(array) {
+      const result = [...array];
+
+      for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+
+      return result;
+    }
+
+    function getSelection() {
+      const candidates = Array.from(
+        { length: TOTAL_IMAGES },
+        (_, i) => i + 1
+      );
+
+      try {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+
+        if (saved) {
+          const parsed = JSON.parse(saved);
+
+          if (
+            Array.isArray(parsed) &&
+            parsed.length === DISPLAY_COUNT &&
+            new Set(parsed).size === DISPLAY_COUNT &&
+            parsed.every(
+              n => Number.isInteger(n) &&
+                   n >= 1 && n <= TOTAL_IMAGES
+            )
+          ) {
+            return parsed;
+          }
+        }
+      } catch (error) {
+        // 保存情報が利用できない場合は新しく抽出
+      }
+
+      const selected = shuffle(candidates).slice(0, DISPLAY_COUNT);
+
+      try {
+        sessionStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify(selected)
+        );
+      } catch (error) {
+        // 保存できなくても実験は続行
+      }
+
+      return selected;
+    }
+
+    // ===================================
+    // 画像の事前読み込み
+    // ===================================
+
+    function preloadImage(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+
+        img.onload = () => resolve(url);
+        img.onerror = () => reject(new Error(url));
+
+        img.src = url;
+      });
+    }
+
+    // ===================================
+    // 順番に提示
+    // ===================================
+
+    async function startExperiment() {
+      const status = document.getElementById("status");
+      const stimulus = document.getElementById("stimulus");
+
+      if (TOTAL_IMAGES < DISPLAY_COUNT) {
+        status.textContent = "画像候補数が不足しています。";
+        return;
+      }
+
+      const selected = getSelection();
+      const urls = selected.map(getImageURL);
+
+      // 3枚すべてを事前に読み込む
+      status.textContent = "画像を準備しています。";
+
+      try {
+        await Promise.all(urls.map(preloadImage));
+      } catch (error) {
+        status.textContent =
+          "画像を読み込めませんでした。画像ファイルを確認してください。";
+        return;
+      }
+
+      // 画像1 → 画像2 → 画像3
+      for (let i = 0; i < urls.length; i++) {
+        status.textContent =
+          `画像提示 ${i + 1} / ${DISPLAY_COUNT}`;
+
+        stimulus.src = urls[i];
+        stimulus.classList.remove("hidden");
+
+        // 表示開始から指定時間待つ
+        await new Promise(resolve => {
+          setTimeout(resolve, DISPLAY_MS);
+        });
+
+        stimulus.classList.add("hidden");
+      }
+
+      stimulus.removeAttribute("src");
+      status.textContent = "画像提示は終了しました。";
+    }
+
+    startExperiment();
+  </script>
+</body>
+</html>
