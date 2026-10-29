@@ -138,9 +138,9 @@ function getScaleOptions() {
 
   const count = Number(project.scaleType);
 
-  return Array.from({ length: count }, (_, index) => ({
+    return Array.from({ length: count }, (_, index) => ({
     value: index + 1,
-    label: (project.scaleLabels || [])[index] || String(index + 1),
+    label: (project.scaleLabels || [])[index] || "",
     scaleLabel: ""
   }));
 }
