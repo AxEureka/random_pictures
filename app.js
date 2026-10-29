@@ -129,6 +129,90 @@ function saveProject(project) {
   });
 }
 
+// ========================================
+// Supabase Storage：画像アップロード
+// ========================================
+
+async function uploadProjectImages(projectId, images) {
+  if (!currentUser) {
+    throw new Error("ログインしていません。");
+  }
+
+  const uploadedImages = [];
+
+  for (let i = 0; i < images.length; i++) {
+    const image = images[i];
+
+    const extension = image.name.includes(".")
+      ? image.name.split(".").pop().toLowerCase()
+      : "png";
+
+    const filePath =
+      `${currentUser.id}/${projectId}/${crypto.randomUUID()}.${extension}`;
+
+    const { error } = await window.supabaseClient.storage
+      .from("experiment-images")
+      .upload(filePath, image.blob);
+
+    if (error) {
+      throw error;
+    }
+
+    uploadedImages.push({
+      name: image.name,
+      path: filePath
+    });
+  }
+
+  return uploadedImages;
+}
+
+// ========================================
+// Supabase：プロジェクト新規保存
+// ========================================
+
+async function createProjectInSupabase(project) {
+  if (!currentUser) {
+    throw new Error("ログインしていません。");
+  }
+
+  // ① 画像をStorageにアップロード
+  const uploadedImages = await uploadProjectImages(
+    project.id,
+    project.images
+  );
+
+  // ② プロジェクト設定を整理
+  const settings = { ...project };
+
+  delete settings.id;
+  delete settings.name;
+  delete settings.images;
+  delete settings.responses;
+
+  settings.images = uploadedImages;
+  settings.responseCount = 0;
+
+  // ③ データベースに保存
+  const { error } = await window.supabaseClient
+    .from("experiment_projects")
+    .insert({
+      id: project.id,
+      owner_id: currentUser.id,
+      name: project.name,
+      settings: settings
+    });
+
+  // ④ 保存に失敗した場合、アップロード済み画像を削除
+  if (error) {
+    await window.supabaseClient.storage
+      .from("experiment-images")
+      .remove(uploadedImages.map(image => image.path));
+
+    throw error;
+  }
+}
+
 function deleteProject(id) {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, "readwrite");
@@ -678,9 +762,9 @@ $("project-form").addEventListener("submit", async event => {
       responses: existing?.responses || []
     };
 
-    await saveProject(project);
+    await createProjectInSupabase(project);
     await refreshProjects();
-
+    
     showScreen("home-screen");
   } catch (error) {
     showError(error.message || "保存できませんでした。");
@@ -764,8 +848,33 @@ async function removeProject(projectId) {
   }
 }
 
+// ========================================
+// Supabase：プロジェクト一覧の読み込み
+// ========================================
+
+async function getProjectsFromSupabase() {
+  const { data, error } = await window.supabaseClient
+    .from("experiment_projects")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return data.map(row => ({
+    ...row.settings,
+    id: row.id,
+    name: row.name,
+    createdAt: new Date(row.created_at).getTime(),
+    images: row.settings.images || [],
+    responses: [],
+    responseCount: row.settings.responseCount || 0
+  }));
+}
+
 async function refreshProjects() {
-  projects = await getAllProjects();
+  projects = await getProjectsFromSupabase();
   renderProjectList();
 }
 
