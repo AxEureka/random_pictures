@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -8,29 +9,59 @@
   <style>
     body {
       margin: 0;
-      padding: 24px;
       font-family: sans-serif;
-      text-align: center;
       background: #ffffff;
       color: #222222;
     }
 
-    #status {
-      margin: 20px 0;
-      font-size: 20px;
+    /* 画面全体 */
+    #screen {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #ffffff;
     }
 
-    #image-area {
-      height: 65vh;
+    /* 開始・終了メッセージ */
+    #message {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
+      gap: 24px;
+      background: #ffffff;
     }
 
+    #message-text {
+      margin: 0;
+      padding: 0 24px;
+      font-size: 24px;
+      text-align: center;
+    }
+
+    #message-button {
+      min-width: 120px;
+      padding: 12px 32px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    #message-button:disabled {
+      cursor: wait;
+      opacity: 0.6;
+    }
+
+    /* 提示画像 */
     #stimulus {
-      display: block;
+      position: absolute;
+      inset: 0;
+      margin: auto;
       max-width: 90vw;
-      max-height: 65vh;
+      max-height: 90vh;
       width: auto;
       height: auto;
       object-fit: contain;
@@ -38,6 +69,11 @@
 
     /* ブランク中の注視点 */
     #fixation {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       font-size: 32px;
       font-weight: normal;
     }
@@ -49,11 +85,20 @@
 </head>
 
 <body>
-  <h1 id="status">画像提示実験</h1>
+  <main id="screen">
 
-  <main id="image-area">
-    <img id="stimulus" class="hidden" alt="提示画像">
+    <!-- 開始・終了メッセージ -->
+    <div id="message">
+      <p id="message-text">画像を提示します。</p>
+      <button id="message-button">OK</button>
+    </div>
+
+    <!-- ブランク中の注視点 -->
     <div id="fixation" class="hidden">＋</div>
+
+    <!-- 提示画像 -->
+    <img id="stimulus" class="hidden" alt="提示画像">
+
   </main>
 
   <script>
@@ -61,30 +106,43 @@
     // 実験設定
     // ===================================
 
-    // 画像候補数：imagesフォルダに保存されている画像のトータル枚数。任意の枚数に調整
+    // 画像候補数：imagesフォルダ内の画像の総数
     const TOTAL_IMAGES = 4;
 
-    // 提示枚数：抽出する枚数。任意の枚数に調整
+    // 提示枚数：ランダムに抽出する枚数
     const DISPLAY_COUNT = 2;
 
-    // 1枚あたりの画像提示時間（秒）：任意の秒数に調整
+    // 1枚あたりの画像提示時間（秒）
     const DISPLAY_SECONDS = 5;
 
-    // ブランク時間（秒）：任意の秒数に調整
+    // ブランク時間（秒）
     const BLANK_SECONDS = 1;
 
     // 秒をミリ秒に変換
     const DISPLAY_MS = DISPLAY_SECONDS * 1000;
     const BLANK_MS = BLANK_SECONDS * 1000;
 
-    // 画像ファイルの場所。名前は、A連番.jpgで保存
+    // 画像ファイルの場所
     // 例：images/A001.jpg
     function getImageURL(number) {
       return `images/A${String(number).padStart(3, "0")}.jpg`;
     }
 
-    // 同じタブ・ウィンドウの再読み込みで選択を維持
+    // 同じタブ・ウィンドウでの再読み込み時に
+    // 選択した画像を維持するためのキー
     const STORAGE_KEY = "image_experiment_selection_v1";
+
+
+    // ===================================
+    // 画面要素
+    // ===================================
+
+    const message = document.getElementById("message");
+    const messageText = document.getElementById("message-text");
+    const messageButton = document.getElementById("message-button");
+    const stimulus = document.getElementById("stimulus");
+    const fixation = document.getElementById("fixation");
+
 
     // ===================================
     // ランダム抽出
@@ -107,6 +165,7 @@
         (_, i) => i + 1
       );
 
+      // 保存済みの選択があれば再利用
       try {
         const saved = sessionStorage.getItem(STORAGE_KEY);
 
@@ -119,16 +178,18 @@
             new Set(parsed).size === DISPLAY_COUNT &&
             parsed.every(
               n => Number.isInteger(n) &&
-                   n >= 1 && n <= TOTAL_IMAGES
+                   n >= 1 &&
+                   n <= TOTAL_IMAGES
             )
           ) {
             return parsed;
           }
         }
       } catch (error) {
-        // 保存情報が利用できない場合は新しく抽出
+        // 保存情報が使えない場合は新しく抽出
       }
 
+      // 重複なしでランダム抽出
       const selected = shuffle(candidates).slice(0, DISPLAY_COUNT);
 
       try {
@@ -142,6 +203,7 @@
 
       return selected;
     }
+
 
     // ===================================
     // 画像の事前読み込み
@@ -158,6 +220,7 @@
       });
     }
 
+
     // ===================================
     // 時間待ち
     // ===================================
@@ -168,17 +231,39 @@
       });
     }
 
+
+    // ===================================
+    // 画面表示の切り替え
+    // ===================================
+
+    function hideImageAndFixation() {
+      stimulus.classList.add("hidden");
+      stimulus.removeAttribute("src");
+      fixation.classList.add("hidden");
+    }
+
+    function showMessage(text, buttonText = "OK") {
+      hideImageAndFixation();
+
+      messageText.textContent = text;
+      messageButton.textContent = buttonText;
+      message.classList.remove("hidden");
+    }
+
+    function hideMessage() {
+      message.classList.add("hidden");
+    }
+
+
     // ===================================
     // ブランク画面
-    // 白い画面の中央に十字を表示
+    // 白背景の中央に十字を表示
     // ===================================
 
     async function showBlank() {
-      const stimulus = document.getElementById("stimulus");
-      const fixation = document.getElementById("fixation");
-
       stimulus.classList.add("hidden");
       stimulus.removeAttribute("src");
+      message.classList.add("hidden");
 
       fixation.classList.remove("hidden");
 
@@ -187,92 +272,125 @@
       fixation.classList.add("hidden");
     }
 
+
+    // ===================================
+    // 実験設定の確認
+    // ===================================
+
+    function validateSettings() {
+      return (
+        Number.isInteger(TOTAL_IMAGES) &&
+        Number.isInteger(DISPLAY_COUNT) &&
+        TOTAL_IMAGES >= 1 &&
+        DISPLAY_COUNT >= 1 &&
+        TOTAL_IMAGES >= DISPLAY_COUNT &&
+        Number.isFinite(DISPLAY_SECONDS) &&
+        DISPLAY_SECONDS > 0 &&
+        Number.isFinite(BLANK_SECONDS) &&
+        BLANK_SECONDS >= 0
+      );
+    }
+
+
     // ===================================
     // 画像提示実験
     // ===================================
 
     async function startExperiment() {
-      const status = document.getElementById("status");
-      const stimulus = document.getElementById("stimulus");
-      const fixation = document.getElementById("fixation");
 
-      // 設定の確認
-      if (
-        !Number.isInteger(TOTAL_IMAGES) ||
-        !Number.isInteger(DISPLAY_COUNT) ||
-        TOTAL_IMAGES < 1 ||
-        DISPLAY_COUNT < 1 ||
-        TOTAL_IMAGES < DISPLAY_COUNT ||
-        DISPLAY_SECONDS <= 0 ||
-        BLANK_SECONDS < 0
-      ) {
-        alert("実験設定を確認してください。");
+      if (!validateSettings()) {
+        showMessage("実験設定を確認してください。");
+        phase = "error";
         return;
       }
 
-      // 開始確認
-      alert("画像を提示します。");
-
-      status.textContent = "画像を準備しています。";
-
+      // 画像をランダムに抽出
       const selected = getSelection();
       const urls = selected.map(getImageURL);
 
       // 画像をすべて事前に読み込む
+      showMessage("画像を準備しています。");
+      messageButton.disabled = true;
+
       try {
         await Promise.all(urls.map(preloadImage));
       } catch (error) {
-        status.textContent =
-          "画像を読み込めませんでした。画像ファイルを確認してください。";
-        alert(
-          "画像を読み込めませんでした。\n" +
-          "画像ファイル名と保存場所を確認してください。"
+        showMessage(
+          "画像を読み込めませんでした。画像ファイルを確認してください。"
         );
+        phase = "error";
+        messageButton.disabled = false;
         return;
       }
 
       // =================================
-      // ブランク → 画像 → ブランク → 画像
+      // ブランク → 画像を順番に提示
       // =================================
 
       for (let i = 0; i < urls.length; i++) {
 
-        // 各画像の直前にブランクを挿入
+        // 各画像の直前にブランク
         await showBlank();
 
-        // 画像を提示
-        status.textContent =
-          `画像提示 ${i + 1} / ${DISPLAY_COUNT}`;
-
-        fixation.classList.add("hidden");
+        // 画像を提示（枚数表示なし）
         stimulus.src = urls[i];
         stimulus.classList.remove("hidden");
 
         // 指定秒数だけ表示
         await wait(DISPLAY_MS);
 
-        // 次の画像へ進む前に非表示
+        // 画像を消す
         stimulus.classList.add("hidden");
         stimulus.removeAttribute("src");
       }
 
       // =================================
-      // 終了
+      // 最後の画像の後のブランク
       // =================================
 
-      fixation.classList.add("hidden");
-      stimulus.classList.add("hidden");
+      await showBlank();
 
-      status.textContent = "お疲れ様でした。";
+      // =================================
+      // 終了画面
+      // =================================
 
-      // OKを押したらウィンドウを閉じる
-      alert("お疲れ様でした。");
+      hideImageAndFixation();
 
-      window.close();
+      phase = "end";
+      showMessage("お疲れ様でした。");
+      messageButton.disabled = false;
     }
 
-    startExperiment();
+
+    // ===================================
+    // ボタン操作
+    // ===================================
+
+    let phase = "start";
+
+    messageButton.addEventListener("click", async () => {
+
+      // 開始画面
+      if (phase === "start") {
+        phase = "running";
+        await startExperiment();
+        return;
+      }
+
+      // 画像読み込みエラー
+      if (phase === "error") {
+        // 閉じる操作が可能なら閉じる
+        window.close();
+        return;
+      }
+
+      // 実験終了画面
+      if (phase === "end") {
+        window.close();
+        return;
+      }
+    });
+
   </script>
 </body>
 </html>
-```
