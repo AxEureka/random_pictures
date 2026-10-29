@@ -225,6 +225,8 @@ function openEditor(projectId = null) {
       (project.customScaleOptions || []).join("\n");
     $("collect-age").checked = project.collectAge;
     $("collect-gender").checked = project.collectGender;
+    $("gender-options").value =
+      (project.genderOptions || ["男性", "女性", "その他"]).join(",");
 
     currentImages = project.images.map(image => ({
       name: image.name,
@@ -556,7 +558,11 @@ function readProjectSettings() {
     questions,
     customScaleOptions,
     collectAge: $("collect-age").checked,
-    collectGender: $("collect-gender").checked
+    collectGender: $("collect-gender").checked,
+    genderOptions: $("gender-options").value
+      .split(",")
+      .map(option => option.trim())
+      .filter(Boolean)
   };
 }
 
@@ -586,7 +592,7 @@ $("project-form").addEventListener("submit", async event => {
         name: image.name,
         blob: image.blob
       })),
-      responseCount: existing?.responseCount || 0
+      responses: existing?.responses || []
     };
 
     await saveProject(project);
