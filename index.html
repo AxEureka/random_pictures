@@ -15,14 +15,55 @@
   <header class="app-header">
     <h1>画像提示実験アプリ</h1>
     <p>実験プロジェクトの作成・管理</p>
+  
+    <div id="auth-status" class="hidden">
+      <span id="logged-in-email"></span>
+      <button id="logout-button" type="button">
+        ログアウト
+      </button>
+    </div>
   </header>
-
   <main class="container">
+
+  <!-- ==============================
+       ログイン画面
+  =============================== -->
+  <section id="login-screen">
+    <h2>研究者ログイン</h2>
+  
+    <form id="login-form">
+      <label for="login-email">
+        メールアドレス
+      </label>
+      <input
+        id="login-email"
+        type="email"
+        required
+        autocomplete="username"
+      >
+  
+      <label for="login-password">
+        パスワード
+      </label>
+      <input
+        id="login-password"
+        type="password"
+        required
+        autocomplete="current-password"
+      >
+  
+      <div id="login-error" class="error-message" role="alert"></div>
+  
+      <button type="submit" id="login-button">
+        ログイン
+      </button>
+    </form>
+  </section>
 
     <!-- ==============================
          ホーム画面
     =============================== -->
-    <section id="home-screen">
+    <section id="home-screen" class="hidden">
       <div class="section-heading">
         <h2>実験プロジェクト</h2>
         <button id="new-project-button" type="button">
