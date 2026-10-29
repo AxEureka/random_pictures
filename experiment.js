@@ -147,16 +147,10 @@ function getScaleOptions() {
 
 function getOptionText(option) {
   if (project.scaleType === "custom") {
-    const label = option.scaleLabel;
-
-    return label
-      ? `${option.value}: ${option.label}（${label}）`
-      : `${option.value}: ${option.label}`;
+    return option.scaleLabel || option.label || "";
   }
 
-  return option.label
-    ? `${option.value}: ${option.label}`
-    : String(option.value);
+  return option.label || "";
 }
 
 function renderRatingQuestions(imageNumber, onComplete) {
@@ -167,10 +161,7 @@ function renderRatingQuestions(imageNumber, onComplete) {
   $("experiment-controls").classList.remove("hidden");
   $("next-button").textContent = "次へ";
 
-  $("progress-text").textContent =
-    project.ratingTiming === "each"
-      ? `画像 ${imageNumber + 1} / ${selectedImages.length} の評定`
-      : "画像の評定";
+  $("progress-text").textContent = "";
 
   const form = document.createElement("form");
   form.className = "rating-form";
@@ -249,9 +240,8 @@ async function showImage(index) {
   $("rating-area").replaceChildren();
   $("experiment-controls").classList.add("hidden");
 
-  $("progress-text").textContent =
-    `画像 ${index + 1} / ${selectedImages.length}`;
-
+  $("progress-text").textContent = "";
+  
   const area = $("stimulus-area");
   area.replaceChildren();
 
