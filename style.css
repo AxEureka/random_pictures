@@ -325,3 +325,79 @@ footer {
     padding: 16px;
   }
 }
+
+/* 評定尺度：横並び */
+.rating-options {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  margin-top: 16px;
+}
+
+.rating-option {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 10px 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.rating-option input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.rating-number {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.rating-label-text {
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+/* 選択中の選択肢 */
+.rating-option:has(input[type="radio"]:checked) {
+  background: #eaf2ff;
+}
+
+/* スマートフォンなど、画面幅が狭い場合 */
+@media (max-width: 480px) {
+  .rating-options {
+    gap: 2px;
+  }
+
+  .rating-option {
+    padding: 8px 2px;
+    gap: 5px;
+  }
+
+  .rating-option input[type="radio"] {
+    width: 18px;
+    height: 18px;
+  }
+
+  .rating-number {
+    font-size: 14px;
+  }
+
+  .rating-label-text {
+    font-size: 11px;
+  }
+}
