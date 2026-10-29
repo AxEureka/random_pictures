@@ -182,19 +182,23 @@ function renderRatingQuestions(imageNumber, onComplete) {
     options.forEach(option => {
       const label = document.createElement("label");
       label.className = "rating-option";
-
+      
       const input = document.createElement("input");
       input.type = "radio";
       input.name = `question-${questionIndex}`;
       input.value = String(option.value);
       input.required = true;
-
+      
+      const number = document.createElement("span");
+      number.className = "rating-number";
+      number.textContent = String(option.value);
+      
       const text = document.createElement("span");
+      text.className = "rating-label-text";
       text.textContent = getOptionText(option);
-
-      label.append(input, text);
+      
+      label.append(input, number, text);
       optionsContainer.appendChild(label);
-    });
 
     fieldset.appendChild(optionsContainer);
     form.appendChild(fieldset);
