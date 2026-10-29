@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>画像提示実験</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="experiment.js" defer></script>
+</head>
+<body>
+  <main class="container experiment-container">
+    <section id="loading-screen">
+      <h1>画像提示実験</h1>
+      <p id="loading-message">実験設定を読み込んでいます。</p>
+    </section>
+
+    <section id="start-screen" class="hidden">
+      <h1>画像提示実験</h1>
+      <p>画像が提示されます。</p>
+      <p>準備ができたら「OK」を押してください。</p>
+      <button id="start-button" type="button">OK</button>
+    </section>
+
+    <section id="experiment-screen" class="hidden" aria-live="polite">
+      <p id="progress-text"></p>
+      <div id="stimulus-area" class="stimulus-area"></div>
+      <div id="rating-area" class="rating-area"></div>
+      <div id="experiment-controls" class="button-row hidden">
+        <button id="next-button" type="button">次へ</button>
+      </div>
+    </section>
+
+    <section id="finish-screen" class="hidden">
+      <h1>実験終了</h1>
+      <p>お疲れ様でした。実験を終了します。</p>
+      <button id="finish-button" type="button">OK</button>
+      <p id="finish-note" class="help-text"></p>
+    </section>
+
+    <section id="error-screen" class="hidden">
+      <h1>実験を開始できません</h1>
+      <p id="error-message"></p>
+    </section>
+  </main>
+</body>
+</html>
