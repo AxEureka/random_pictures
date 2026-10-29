@@ -731,3 +731,13 @@ async function initApp() {
 }
 
 initApp();
+
+// ========================================
+// Supabase 接続確認
+// ========================================
+
+if (window.supabaseClient) {
+  console.log("Supabase接続設定を読み込みました。");
+} else {
+  console.error("Supabase接続設定を読み込めませんでした。");
+}
