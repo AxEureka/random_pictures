@@ -86,6 +86,79 @@ $("logout-button").addEventListener("click", async () => {
   showScreen("login-screen");
 });
 
+// ログイン画面・新規登録画面の切り替え
+$("show-signup-button").addEventListener("click", () => {
+  $("signup-error").textContent = "";
+  $("signup-form").reset();
+  showScreen("signup-screen");
+});
+
+$("show-login-button").addEventListener("click", () => {
+  $("login-error").textContent = "";
+  $("signup-error").textContent = "";
+  $("signup-form").reset();
+  showScreen("login-screen");
+});
+
+// 新規登録処理
+$("signup-form").addEventListener("submit", async event => {
+  event.preventDefault();
+
+  $("signup-error").textContent = "";
+
+  const email = $("signup-email").value.trim();
+  const password = $("signup-password").value;
+  const passwordConfirm = $("signup-password-confirm").value;
+
+  // パスワードの一致を確認
+  if (password !== passwordConfirm) {
+    $("signup-error").textContent =
+      "確認用パスワードが一致しません。";
+    return;
+  }
+
+  $("signup-button").disabled = true;
+  $("signup-button").textContent = "登録中...";
+
+  try {
+    const { data, error } =
+      await window.supabaseClient.auth.signUp({
+        email,
+        password
+      });
+
+    if (error) throw error;
+
+    if (data.session && data.user) {
+      // 登録後すぐにログインできた場合
+      currentUser = data.user;
+
+      await refreshProjects();
+
+      $("logged-in-email").textContent = currentUser.email;
+      $("auth-status").classList.remove("hidden");
+
+      showScreen("home-screen");
+    } else {
+      // メール認証が必要な場合
+      $("signup-error").textContent =
+        "登録を受け付けました。確認メールを送信しましたので、メール内のリンクから認証してください。認証後、ログイン画面からログインできます。";
+
+      $("signup-form").reset();
+    }
+
+  } catch (error) {
+    console.error("新規登録エラー:", error);
+
+    $("signup-error").textContent =
+      error.message || "アカウントを作成できませんでした。";
+
+  } finally {
+    $("signup-button").disabled = false;
+    $("signup-button").textContent = "アカウントを作成";
+  }
+});
+
 function openDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -347,6 +420,7 @@ function deleteProject(id) {
 function showScreen(screenId) {
   [
     "login-screen",
+    "signup-screen",
     "home-screen",
     "editor-screen",
     "detail-screen"
