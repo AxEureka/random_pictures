@@ -272,6 +272,37 @@ async function updateProjectInSupabase(project) {
 }
 
 // ========================================
+// Supabase：プロジェクト削除
+// ========================================
+
+async function deleteProjectFromSupabase(project) {
+  // まず、プロジェクトに登録されている画像を削除
+  const imagePaths = (project.images || [])
+    .map(image => image.path)
+    .filter(Boolean);
+
+  if (imagePaths.length > 0) {
+    const { error: storageError } = await window.supabaseClient.storage
+      .from("experiment-images")
+      .remove(imagePaths);
+
+    if (storageError) {
+      throw storageError;
+    }
+  }
+
+  // 次に、プロジェクト本体を削除
+  const { error } = await window.supabaseClient
+    .from("experiment_projects")
+    .delete()
+    .eq("id", project.id);
+
+  if (error) {
+    throw error;
+  }
+}
+
+// ========================================
 // Supabase Storage：画像ダウンロード
 // ========================================
 
@@ -928,13 +959,16 @@ async function removeProject(projectId) {
   if (!confirm(`「${project.name}」を削除しますか？`)) return;
 
   try {
-    await deleteProject(projectId);
+    await deleteProjectFromSupabase(project);
     await refreshProjects();
-  } catch {
-    alert("プロジェクトを削除できませんでした。");
+
+    alert("プロジェクトを削除しました。");
+
+  } catch (error) {
+    console.error("プロジェクト削除エラー:", error);
+    alert("プロジェクトを削除できませんでした。\n" + error.message);
   }
 }
-
 // ========================================
 // Supabase：プロジェクト一覧の読み込み
 // ========================================
