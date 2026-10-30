@@ -213,6 +213,32 @@ async function createProjectInSupabase(project) {
   }
 }
 
+// ========================================
+// Supabase Storage：画像ダウンロード
+// ========================================
+
+async function downloadProjectImages(images) {
+  const downloadedImages = [];
+
+  for (const image of images) {
+    const { data, error } = await window.supabaseClient.storage
+      .from("experiment-images")
+      .download(image.path);
+
+    if (error) {
+      throw error;
+    }
+
+    downloadedImages.push({
+      name: image.name,
+      path: image.path,
+      blob: data
+    });
+  }
+
+  return downloadedImages;
+}
+
 function deleteProject(id) {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, "readwrite");
