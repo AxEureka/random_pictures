@@ -379,7 +379,7 @@ function resetEditor() {
   renderQuestionFields([]);
 }
 
-function openEditor(projectId = null) {
+async function openEditor(projectId = null) {
   resetEditor();
 
   if (projectId) {
@@ -414,11 +414,8 @@ function openEditor(projectId = null) {
     $("gender-options").value =
       (project.genderOptions || ["男性", "女性", "その他"]).join(",");
 
-    currentImages = project.images.map(image => ({
-      name: image.name,
-      blob: image.blob
-    }));
-
+    currentImages = await downloadProjectImages(project.images);
+    
     renderImagePreviews();
 
     renderQuestionFields(project.questions);
