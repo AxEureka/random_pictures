@@ -25,41 +25,102 @@
   </header>
   <main class="container">
 
-  <!-- ==============================
-       ログイン画面
-  =============================== -->
-  <section id="login-screen">
-    <h2>研究者ログイン</h2>
+    <!-- ==============================
+         ログイン画面
+    =============================== -->
+    <section id="login-screen">
+      <h2>研究者ログイン</h2>
   
-    <form id="login-form">
-      <label for="login-email">
+      <form id="login-form">
+        <label for="login-email">
+          メールアドレス
+        </label>
+        <input
+          id="login-email"
+          type="email"
+          required
+          autocomplete="username"
+        >
+  
+        <label for="login-password">
+          パスワード
+        </label>
+        <input
+          id="login-password"
+          type="password"
+          required
+          autocomplete="current-password"
+        >
+  
+        <div id="login-error" class="error-message" role="alert"></div>
+  
+        <button type="submit" id="login-button">
+          ログイン
+        </button>
+      </form>
+  
+      <p>
+        アカウントをお持ちでない方は
+        <button id="show-signup-button" type="button">
+          新規登録
+        </button>
+      </p>
+    </section>
+
+
+  <!-- ==============================
+       新規登録画面
+  =============================== -->
+  <section id="signup-screen" class="hidden">
+    <h2>研究者アカウント新規登録</h2>
+
+    <form id="signup-form">
+      <label for="signup-email">
         メールアドレス
       </label>
       <input
-        id="login-email"
+        id="signup-email"
         type="email"
         required
         autocomplete="username"
       >
-  
-      <label for="login-password">
+
+      <label for="signup-password">
         パスワード
       </label>
       <input
-        id="login-password"
+        id="signup-password"
         type="password"
         required
-        autocomplete="current-password"
+        minlength="6"
+        autocomplete="new-password"
       >
-  
-      <div id="login-error" class="error-message" role="alert"></div>
-  
-      <button type="submit" id="login-button">
-        ログイン
+
+      <label for="signup-password-confirm">
+        パスワード（確認）
+      </label>
+      <input
+        id="signup-password-confirm"
+        type="password"
+        required
+        minlength="6"
+        autocomplete="new-password"
+      >
+
+      <div id="signup-error" class="error-message" role="alert"></div>
+
+      <button type="submit" id="signup-button">
+        アカウントを作成
       </button>
     </form>
-  </section>
 
+    <p>
+      すでにアカウントをお持ちの方は
+      <button id="show-login-button" type="button">
+        ログインへ戻る
+      </button>
+    </p>
+  </section>
     <!-- ==============================
          ホーム画面
     =============================== -->
