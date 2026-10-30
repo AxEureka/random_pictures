@@ -214,6 +214,64 @@ async function createProjectInSupabase(project) {
 }
 
 // ========================================
+// Supabase：既存プロジェクトの更新
+// ========================================
+
+async function updateProjectInSupabase(project) {
+  // 新しく追加された画像だけをアップロード
+  const newImages = project.images.filter(image => !image.path);
+
+  const uploadedImages = await uploadProjectImages(
+    project.id,
+    newImages
+  );
+
+  // 既存画像のパスはそのまま、新しい画像にはアップロード先のパスを設定
+  let uploadedIndex = 0;
+
+  const savedImages = project.images.map(image => {
+    if (image.path) {
+      return {
+        name: image.name,
+        path: image.path
+      };
+    }
+
+    const uploaded = uploadedImages[uploadedIndex++];
+
+    return uploaded;
+  });
+
+  const settings = { ...project };
+
+  delete settings.id;
+  delete settings.name;
+  delete settings.responses;
+
+  // 画像情報はBlobではなく、Storage上のパスを保存
+  settings.images = savedImages;
+
+  const { error } = await window.supabaseClient
+    .from("experiment_projects")
+    .update({
+      name: project.name,
+      settings: settings
+    })
+    .eq("id", project.id);
+
+  if (error) {
+    // 更新に失敗した場合、新しくアップロードした画像を削除
+    if (uploadedImages.length > 0) {
+      await window.supabaseClient.storage
+        .from("experiment-images")
+        .remove(uploadedImages.map(image => image.path));
+    }
+
+    throw error;
+  }
+}
+
+// ========================================
 // Supabase Storage：画像ダウンロード
 // ========================================
 
@@ -780,12 +838,18 @@ $("project-form").addEventListener("submit", async event => {
       ...settings,
       images: currentImages.map(image => ({
         name: image.name,
+        path: image.path,
         blob: image.blob
       })),
       responses: existing?.responses || []
     };
 
-    await createProjectInSupabase(project);
+     if (existing) {
+      await updateProjectInSupabase(project);
+    } else {
+      await createProjectInSupabase(project);
+    }
+    
     await refreshProjects();
     
     showScreen("home-screen");
