@@ -4,8 +4,6 @@
 // 回答をプロジェクト内のresponses配列に保存します。
 // 別端末からの参加・中央集約には、後でサーバーAPIへの切り替えが必要です。
 
-const DB_NAME = "ImageExperimentApp";
-const STORE_NAME = "projects";
 const $ = (id) => document.getElementById(id);
 
 let db;
@@ -18,6 +16,26 @@ let currentAnswers = {};
 let participantStartedAt = null;
 let participantFinishedAt = null;
 let finishMessageShown = false;
+
+// ========================================
+// Supabase：プロジェクト取得
+// ========================================
+
+async function getProjectFromSupabase(projectId) {
+  const { data, error } = await window.supabaseClient
+    .from("experiment_projects")
+    .select("*")
+    .eq("id", projectId)
+    .single();
+
+  if (error) throw error;
+
+  return {
+    ...data.settings,
+    id: data.id,
+    name: data.name
+  };
+}
 
 function showScreen(screenId) {
   [
@@ -119,12 +137,12 @@ function createStimulusImage(image) {
 
   img.className = "experiment-stimulus-image";
   img.alt = image.name || "提示画像";
-  img.src = URL.createObjectURL(image.blob);
 
-  img.addEventListener("load", () => {
-    // 表示が終わった時点でURLを解放
-    window.setTimeout(() => URL.revokeObjectURL(img.src), 0);
-  }, { once: true });
+  const { data } = window.supabaseClient.storage
+    .from("experiment-images")
+    .getPublicUrl(image.path);
+
+  img.src = data.publicUrl;
 
   return img;
 }
@@ -442,9 +460,8 @@ async function initExperiment() {
       return;
     }
 
-    db = await openDatabase();
-    project = await getProject(projectId);
-
+    project = await getProjectFromSupabase(projectId);
+    
     if (!project) {
       showError(
         "このブラウザに実験設定が見つかりません。管理画面と同じブラウザで開くか、設定を確認してください。"
