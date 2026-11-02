@@ -974,6 +974,61 @@ function openProjectDetail(projectId) {
 
   $("detail-project-name").textContent = project.name;
   $("response-count").textContent = project.responseCount || 0;
+    // 公開状態を表示
+  $("publication-status").innerHTML = project.published
+    ? "<strong>公開状態：公開中</strong>"
+    : "<strong>公開状態：非公開</strong>";
+
+  // ボタンの表示状態を更新
+  $("publish-project-button").disabled = !!project.published;
+  $("unpublish-project-button").disabled = !project.published;
+
+    // 公開状態をSupabaseに保存する
+  async function setPublicationStatus(published) {
+    $("project-action-message").textContent = "公開状態を更新しています...";
+
+    $("publish-project-button").disabled = true;
+    $("unpublish-project-button").disabled = true;
+
+    const { error } = await window.supabaseClient
+      .from("experiment_projects")
+      .update({ published: published })
+      .eq("id", project.id);
+
+    if (error) {
+      console.error("公開状態の更新に失敗しました:", error);
+
+      $("project-action-message").textContent =
+        "更新に失敗しました。時間をおいて再度お試しください。";
+
+      $("publish-project-button").disabled = !!project.published;
+      $("unpublish-project-button").disabled = !project.published;
+      return;
+    }
+
+    // 画面上のプロジェクト情報も更新
+    project.published = published;
+
+    $("publication-status").innerHTML = published
+      ? "<strong>公開状態：公開中</strong>"
+      : "<strong>公開状態：非公開</strong>";
+
+    $("publish-project-button").disabled = published;
+    $("unpublish-project-button").disabled = !published;
+
+    $("project-action-message").textContent = published
+      ? "プロジェクトを公開しました。"
+      : "プロジェクトを非公開にしました。";
+  }
+
+  // 公開・非公開ボタンに処理を設定
+  $("publish-project-button").onclick = () => {
+    setPublicationStatus(true);
+  };
+
+  $("unpublish-project-button").onclick = () => {
+    setPublicationStatus(false);
+  };
 
   const summary = $("project-summary");
   summary.replaceChildren();
@@ -1061,6 +1116,7 @@ async function getProjectsFromSupabase() {
     ...row.settings,
     id: row.id,
     name: row.name,
+    published: row.published,
     createdAt: new Date(row.created_at).getTime(),
     images: row.settings.images || [],
     responses: [],
