@@ -1052,9 +1052,13 @@ async function openProjectDetail(projectId) {
   });
 
   $("data-status").textContent =
-    "オンラインでの回答収集機能は未接続です。";
+  "オンラインで回答を収集しています。";
 
   $("download-csv-button").disabled = true;
+  $("download-csv-button").onclick = () => {
+    downloadProjectCSV(project);
+  };
+  
   $("project-action-message").textContent = "";
 
   $("edit-project-button").onclick = () => openEditor(project.id);
@@ -1084,11 +1088,208 @@ async function openProjectDetail(projectId) {
   if (error) {
     console.error("回答件数の取得に失敗しました:", error);
     $("response-count").textContent = "取得失敗";
+    $("download-csv-button").disabled = true;
   } else {
     project.responseCount = count;
     $("response-count").textContent = count;
+
+    // 回答が1件以上あればCSVボタンを有効にする
+    $("download-csv-button").disabled = count === 0;
   }
 }
+
+
+// ========================================
+// CSVダウンロード
+// ========================================
+
+// CSVのセルを整形する
+function escapeCSV(value) {
+  let text = value == null ? "" : String(value);
+
+  // Excelで数式として実行されることを防ぐ
+  if (/^\s*[=+\-@]/.test(text)) {
+    text = "'" + text;
+  }
+
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+// プロジェクトの回答データをCSVでダウンロード
+async function downloadProjectCSV(project) {
+  const button = $("download-csv-button");
+
+  button.disabled = true;
+  $("project-action-message").textContent =
+    "回答データを取得しています...";
+
+  try {
+    // Supabaseから回答データを取得
+    const { data, error } = await window.supabaseClient
+      .from("experiment_responses")
+      .select("response_data, created_at")
+      .eq("project_id", project.id)
+      .order("created_at", { ascending: true });
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      $("project-action-message").textContent =
+        "ダウンロードできる回答データがありません。";
+      return;
+    }
+
+    const records = data.map(row => row.response_data);
+
+    const questions = project.questions || [];
+
+    const isEachRating =
+      project.ratingEnabled &&
+      project.ratingTiming === "each";
+
+    // 最大提示枚数を取得
+    const maxImages = Math.max(
+      Number(project.displayCount) || 0,
+      ...records.map(record =>
+        (record.imageOrder || []).length
+      )
+    );
+
+    // 基本列
+    const headers = [
+      "回答ID",
+      "実験名",
+      "開始日時",
+      "終了日時",
+      "年齢",
+      "性別"
+    ];
+
+    // 画像ごとの列
+    for (let i = 1; i <= maxImages; i++) {
+      headers.push(`提示画像_${i}`);
+
+      // 画像ごとに評定する場合
+      if (isEachRating) {
+        questions.forEach((question, questionIndex) => {
+          headers.push(
+            `画像${i}_${question.text || `質問${questionIndex + 1}`}`
+          );
+        });
+      }
+    }
+
+    // 全画像提示後に評定する場合
+    if (
+      project.ratingEnabled &&
+      !isEachRating
+    ) {
+      questions.forEach((question, questionIndex) => {
+        headers.push(
+          `画像提示後_${question.text || `質問${questionIndex + 1}`}`
+        );
+      });
+    }
+
+    // 各参加者のデータを作成
+    const rows = records.map(record => {
+      const row = [
+        record.responseId,
+        record.projectName,
+        record.startedAt,
+        record.finishedAt,
+        record.age,
+        record.gender
+      ];
+
+      const imageOrder = record.imageOrder || [];
+      const responses = record.responses || [];
+
+      for (let i = 1; i <= maxImages; i++) {
+        row.push(imageOrder[i - 1] || "");
+
+        if (isEachRating) {
+          const imageResponse = responses.find(
+            response => response.imageIndex === i
+          );
+
+          questions.forEach((question, questionIndex) => {
+            const key = `question_${questionIndex + 1}`;
+
+            row.push(
+              imageResponse?.answers?.[key] ?? ""
+            );
+          });
+        }
+      }
+
+      // 最後にまとめて評定した場合
+      if (
+        project.ratingEnabled &&
+        !isEachRating
+      ) {
+        const finalResponse = responses.find(
+          response => response.imageIndex === null
+        );
+
+        questions.forEach((question, questionIndex) => {
+          const key = `question_${questionIndex + 1}`;
+
+          row.push(
+            finalResponse?.answers?.[key] ?? ""
+          );
+        });
+      }
+
+      return row;
+    });
+
+    // CSV文字列を作成
+    const csvContent = [
+      headers,
+      ...rows
+    ]
+      .map(row => row.map(escapeCSV).join(","))
+      .join("\r\n");
+
+    // UTF-8 BOMを付けてExcelで開きやすくする
+    const blob = new Blob(
+      ["\uFEFF" + csvContent],
+      { type: "text/csv;charset=utf-8;" }
+    );
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+
+    const safeName = project.name.replace(
+      /[\\/:*?"<>|]/g,
+      "_"
+    );
+
+    link.download = `${safeName}_responses.csv`;
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(url);
+
+    $("project-action-message").textContent =
+      `${records.length}件の回答データをダウンロードしました。`;
+
+  } catch (error) {
+    console.error("CSVダウンロードエラー:", error);
+
+    $("project-action-message").textContent =
+      "CSVのダウンロードに失敗しました。";
+
+  } finally {
+    button.disabled = false;
+  }
+}
+
 
 
 // ========================================
