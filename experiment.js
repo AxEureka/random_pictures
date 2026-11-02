@@ -26,17 +26,24 @@ async function getProjectFromSupabase(projectId) {
     .from("experiment_projects")
     .select("*")
     .eq("id", projectId)
+    .eq("published", true)
     .single();
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === "PGRST116") {
+      throw new Error("この実験は現在公開されていません。");
+    }
+
+    throw error;
+  }
 
   return {
     ...data.settings,
     id: data.id,
-    name: data.name
+    name: data.name,
+    published: data.published
   };
 }
-
 function showScreen(screenId) {
   [
     "loading-screen",
@@ -82,39 +89,17 @@ function getProject(id) {
   });
 }
 
-function saveResponseToProject(response) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, "readwrite");
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.get(project.id);
+async function saveResponseToSupabase(response) {
+  const { error } = await window.supabaseClient
+    .from("experiment_responses")
+    .insert({
+      project_id: project.id,
+      response_data: response
+    });
 
-    request.onsuccess = () => {
-      const latest = request.result;
-
-      if (!latest) {
-        transaction.abort();
-        reject(new Error("プロジェクトが見つかりません。"));
-        return;
-      }
-
-      latest.responses = Array.isArray(latest.responses)
-        ? latest.responses
-        : [];
-
-      latest.responses.push(response);
-      latest.responseCount = Number(latest.responseCount || 0) + 1;
-      latest.updatedAt = Date.now();
-
-      store.put(latest);
-    };
-
-    request.onerror = () => reject(request.error);
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
-    transaction.onabort = () => {
-      reject(transaction.error || new Error("保存に失敗しました。"));
-    };
-  });
+  if (error) {
+    throw error;
+  }
 }
 
 function shuffle(array) {
@@ -132,17 +117,20 @@ function wait(ms) {
   return new Promise(resolve => window.setTimeout(resolve, ms));
 }
 
-function createStimulusImage(image) {
+async function createStimulusImage(image) {
+  const { data, error } = await window.supabaseClient.storage
+    .from("experiment-images")
+    .createSignedUrl(image.path, 3600);
+
+  if (error) {
+    throw error;
+  }
+
   const img = document.createElement("img");
 
   img.className = "experiment-stimulus-image";
   img.alt = image.name || "提示画像";
-
-  const { data } = window.supabaseClient.storage
-    .from("experiment-images")
-    .getPublicUrl(image.path);
-
-  img.src = data.publicUrl;
+  img.src = data.signedUrl;
 
   return img;
 }
@@ -308,8 +296,16 @@ async function showImage(index) {
   area.replaceChildren();
 
   const image = selectedImages[index];
-  area.appendChild(createStimulusImage(image));
 
+  try {
+    const stimulusImage = await createStimulusImage(image);
+    area.appendChild(stimulusImage);
+  } catch (error) {
+    console.error("画像の取得に失敗しました:", error);
+    showError("画像を読み込めませんでした。実験担当者にお知らせください。");
+    return;
+  }
+  
   await wait(Number(project.displaySeconds) * 1000);
 
   // 画像の提示時間が終わったら画像を隠す
@@ -428,7 +424,7 @@ async function completeExperiment() {
   };
 
   try {
-    await saveResponseToProject(responseRecord);
+    await saveResponseToSupabase(responseRecord);
 
     $("finish-note").textContent = "回答を保存しました。";
   } catch (error) {
@@ -542,13 +538,18 @@ async function initExperiment() {
     });
 
     showScreen("start-screen");
-  } catch (error) {
-    console.error(error);
-
-    showError(
-      "実験設定を読み込めませんでした。ページを再読み込みしてください。"
-    );
-  }
+    } catch (error) {
+      console.error(error);
+  
+      if (error.message === "この実験は現在公開されていません。") {
+        showError("この実験は現在公開されていません。");
+        return;
+      }
+  
+      showError(
+        "実験設定を読み込めませんでした。ページを再読み込みしてください。"
+      );
+    }
 }
 
 initExperiment();
