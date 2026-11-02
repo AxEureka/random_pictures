@@ -118,6 +118,10 @@ function wait(ms) {
 }
 
 async function createStimulusImage(image) {
+
+  console.log("画像情報:", image);
+  console.log("画像パス:", image.path);
+
   const { data, error } = await window.supabaseClient.storage
     .from("experiment-images")
     .createSignedUrl(image.path, 3600);
