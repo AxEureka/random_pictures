@@ -117,11 +117,8 @@ function wait(ms) {
   return new Promise(resolve => window.setTimeout(resolve, ms));
 }
 
+
 async function createStimulusImage(image) {
-
-  console.log("画像情報:", image);
-  console.log("画像パス:", image.path);
-
   const { data, error } = await window.supabaseClient.storage
     .from("experiment-images")
     .createSignedUrl(image.path, 3600);
@@ -134,7 +131,16 @@ async function createStimulusImage(image) {
 
   img.className = "experiment-stimulus-image";
   img.alt = image.name || "提示画像";
-  img.src = data.signedUrl;
+
+  // 画像データの読み込み完了を待つ
+  await new Promise((resolve, reject) => {
+    img.onload = resolve;
+    img.onerror = () => reject(
+      new Error("画像データの読み込みに失敗しました。")
+    );
+
+    img.src = data.signedUrl;
+  });
 
   return img;
 }
