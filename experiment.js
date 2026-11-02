@@ -1,8 +1,20 @@
 "use strict";
 
-// 試作版：管理画面と同じブラウザのIndexedDBから設定・画像を読み込み、
-// 回答をプロジェクト内のresponses配列に保存します。
-// 別端末からの参加・中央集約には、後でサーバーAPIへの切り替えが必要です。
+// ========================================
+// 参加者専用Supabaseクライアント
+// ========================================
+
+const participantSupabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY,
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    }
+  }
+);
 
 const $ = (id) => document.getElementById(id);
 
@@ -22,7 +34,7 @@ let finishMessageShown = false;
 // ========================================
 
 async function getProjectFromSupabase(projectId) {
-  const { data, error } = await window.supabaseClient
+  const { data, error } = await participantSupabaseClient
     .from("experiment_projects")
     .select("*")
     .eq("id", projectId)
@@ -90,7 +102,7 @@ function getProject(id) {
 }
 
 async function saveResponseToSupabase(response) {
-  const { error } = await window.supabaseClient
+  const { error } = await participantSupabaseClient
     .from("experiment_responses")
     .insert({
       project_id: project.id,
@@ -119,7 +131,7 @@ function wait(ms) {
 
 
 async function createStimulusImage(image) {
-  const { data, error } = await window.supabaseClient.storage
+  const { data, error } = await participantSupabaseClient.storage
     .from("experiment-images")
     .createSignedUrl(image.path, 3600);
 
