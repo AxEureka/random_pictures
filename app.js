@@ -968,12 +968,12 @@ $("project-form").addEventListener("submit", async event => {
 // 詳細画面
 // ========================================
 
-function openProjectDetail(projectId) {
+async function openProjectDetail(projectId) {
   const project = projects.find(p => p.id === projectId);
   if (!project) return;
 
   $("detail-project-name").textContent = project.name;
-  $("response-count").textContent = project.responseCount || 0;
+  $("response-count").textContent = "取得中...";
     // 公開状態を表示
   $("publication-status").innerHTML = project.published
     ? "<strong>公開状態：公開中</strong>"
@@ -1074,6 +1074,20 @@ function openProjectDetail(projectId) {
   };
 
   showScreen("detail-screen");
+
+  // Supabaseから実際の回答件数を取得
+  const { count, error } = await window.supabaseClient
+    .from("experiment_responses")
+    .select("*", { count: "exact", head: true })
+    .eq("project_id", project.id);
+
+  if (error) {
+    console.error("回答件数の取得に失敗しました:", error);
+    $("response-count").textContent = "取得失敗";
+  } else {
+    project.responseCount = count;
+    $("response-count").textContent = count;
+  }
 }
 
 
